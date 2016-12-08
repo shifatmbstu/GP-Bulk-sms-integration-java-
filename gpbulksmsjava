@@ -1,0 +1,112 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+/**
+ * 
+ *
+ * @author Md Shifatul Islam
+ * @email : shifat.it@gmail.com
+ * @cell : +8801745944843
+ */
+public class SMSProcessor {
+    
+    public String sendSMS(Collection<String> cells, String message) throws KeyManagementException, MalformedURLException, IOException {
+        
+        StringBuilder allCell = new StringBuilder();
+        String commaSeparation="";
+        for(String cell:cells){
+            allCell.append(commaSeparation);
+            allCell.append(cell);
+            commaSeparation = ",";
+        }
+        StringBuilder url= new StringBuilder();
+        url.append(SmsConfig.URL);
+        url.append(SmsConfig.USER_NAME_PARAM).append(SmsConfig.USER_NAME);
+        url.append(SmsConfig.PASSWORD_PARAM).append(SmsConfig.PASSWORD);
+        url.append(SmsConfig.API_CODE_PARAM).append(SmsConfig.API_CODE);
+        url.append(SmsConfig.MSISDN_PARAM).append(allCell);
+        url.append(SmsConfig.COUNTRY_CODE_PARAM).append(SmsConfig.COUNTRY_CODE);
+        url.append(SmsConfig.CLI_PARAM).append(SmsConfig.CLIENT);
+        url.append(SmsConfig.MESSAGE_TYPE_PARAM).append(SmsConfig.MESSAGE_TYPE);
+        url.append(SmsConfig.MESSAGE_PARAM).append(message);
+        url.append(SmsConfig.MESSAGE_ID_PARAM).append(SmsConfig.MESSAGE_ID);
+        
+          /* Certification error solution Start */
+        TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
+            public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
+            public void checkClientTrusted(X509Certificate[] certs, String authType) { }
+            public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+
+        } };
+
+        SSLContext sc = null;
+        BufferedReader in = null;
+        URLConnection connection = null;
+        String line = "";
+        String strToReturn = null;
+        try {
+            sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+
+             // Create all-trusting host name verifier
+            HostnameVerifier allHostsValid = new HostnameVerifier() {
+            public boolean verify(String hostname, SSLSession session) { return true; }
+            };
+            // Install the all-trusting host verifier
+            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+        
+            /* Certification error solution End */
+
+            URL obj;
+            StringBuffer response = new StringBuffer();
+
+            String inputLine;
+            obj = new URL(url.toString());
+            connection = obj.openConnection();
+            in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        
+            while ((line = in.readLine()) != null) {
+                if (strToReturn == null) {
+                strToReturn = line;
+                } else {
+                    strToReturn = strToReturn + line;
+                }
+            }
+        List<String> elephantList = Arrays.asList(strToReturn.split(","));
+        if (elephantList.get(1).equals("200")) {
+            return SmsConfig.SUCCESS;
+        }
+        
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(SMSProcessor.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            
+            in.close();
+            ((HttpURLConnection) connection).disconnect();
+
+        }
+       return SmsConfig.ERROR;
+    }
+ 
+}
